@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SentinelBTC — Post-Quantum DeFi Security</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg0:#060a0f;--bg1:#070b12;--bg2:#080c13;--bg3:#0a0e17;
+  --border:#1a2433;--border2:#0d1520;
+  --text:#c8d8e8;--muted:#8899aa;--dim:#445566;--dimmer:#334455;--dimmest:#1a2433;
+  --red:#ff2244;--red-bg:#2a0008;
+  --orange:#ff8800;--orange-bg:#1a0f00;
+  --yellow:#ffcc00;--yellow-bg:#1a1400;
+  --green:#00ff88;--green-bg:#001a0d;
+  --blue:#4a9eff;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg0);color:var(--text);font-family:'JetBrains Mono',monospace;}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg3)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* animations */
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 6px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes slide-in{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes alert-in{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes flicker{0%,100%{opacity:1}92%{opacity:.97}94%{opacity:.93}96%{opacity:.98}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes scanpulse{0%{opacity:.04}50%{opacity:.08}100%{opacity:.04}}
+
+/* scanlines */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px);
+  animation:scanpulse 3s infinite;}
+
+/* layout */
+#app{display:flex;flex-direction:column;height:100vh;}
+#header{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:52px;
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  animation:flicker 5s infinite;flex-shrink:0;}
+#body{display:grid;grid-template-columns:1fr 320px;flex:1;overflow:hidden;}
+
+/* header parts */
+.hd-logo{display:flex;align-items:center;gap:8px;}
+.hd-icon{width:28px;height:28px;border-radius:4px;background:linear-gradient(135deg,#ff8800,#ff2244);
+  display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#000;}
+.hd-title{font-family:'Orbitron',sans-serif;font-size:15px;font-weight:900;color:#e2e8f0;letter-spacing:3px;}
+.hd-sub{font-size:8px;color:var(--dimmer);letter-spacing:2px;}
+.hd-divider{width:1px;height:28px;background:var(--border);margin:0 12px;}
+.hd-nets{display:flex;gap:12px;align-items:center;}
+.hd-net{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--dim);letter-spacing:1px;}
+.hd-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+.hd-right{display:flex;align-items:center;gap:12px;}
+.pq-badge{font-size:9px;color:var(--dimmer);}
+#critical-banner{display:none;padding:4px 10px;background:var(--red-bg);border:1px solid var(--red);
+  border-radius:3px;color:var(--red);font-size:10px;font-weight:700;letter-spacing:1px;
+  animation:pulse-ring 1s infinite;box-shadow:0 0 15px #ff224466;}
+#live-btn{padding:5px 14px;border-radius:3px;font-family:inherit;font-size:10px;font-weight:700;
+  letter-spacing:1px;cursor:pointer;transition:all .2s;}
+#live-btn.live{border:1px solid var(--green);background:var(--green-bg);color:var(--green);box-shadow:0 0 10px #00ff8833;}
+#live-btn.paused{border:1px solid var(--dimmer);background:var(--bg3);color:var(--dim);}
+
+/* LEFT */
+#left{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);}
+#stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:12px 16px;
+  background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.stat-card{background:var(--bg0);border:1px solid var(--border);border-radius:4px;padding:14px 16px;}
+.stat-label{font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:4px;}
+.stat-val{font-size:26px;font-weight:900;line-height:1;}
+.stat-sub{font-size:10px;color:var(--dimmer);margin-top:2px;}
+.stat-spark{margin-top:4px;}
+#filter-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;
+  background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.filter-label{font-size:9px;color:var(--dimmer);letter-spacing:1px;margin-right:4px;}
+.filter-btn{padding:3px 10px;border-radius:2px;font-family:inherit;font-size:9px;letter-spacing:1px;cursor:pointer;transition:all .2s;}
+#tx-count{margin-left:auto;font-size:9px;color:var(--dimmer);}
+#blink-cursor{animation:blink 1s infinite;color:var(--green);}
+#tx-header{display:grid;grid-template-columns:20px 80px 1fr 100px 90px 70px 80px;
+  gap:0 12px;padding:6px 12px;background:var(--bg1);border-bottom:1px solid var(--border2);
+  font-size:9px;color:var(--dimmer);letter-spacing:1px;flex-shrink:0;}
+#tx-stream{flex:1;overflow-y:auto;background:var(--bg1);}
+.tx-row{display:grid;grid-template-columns:20px 80px 1fr 100px 90px 70px 80px;
+  gap:0 12px;align-items:center;padding:7px 12px;border-bottom:1px solid var(--bg0);
+  font-size:11px;animation:slide-in .4s ease;transition:background .3s;}
+.tx-pulse{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.tx-time{color:var(--blue);}
+.tx-proto{color:var(--muted);}
+.tx-type{color:#99aacc;}
+.tx-sep{color:var(--dimmer);}
+.tx-amt{color:#e2e8f0;text-align:right;}
+.tx-score{text-align:center;font-weight:700;}
+.tx-level{padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;text-align:center;letter-spacing:1px;}
+.tx-block{color:var(--dimmer);font-size:9px;}
+
+/* RIGHT */
+#right{display:flex;flex-direction:column;overflow:hidden;background:var(--bg1);}
+#gauge-panel{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+#net-panel{padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+#proto-panel{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+#alerts-panel{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.panel-title{font-size:9px;color:var(--dimmer);letter-spacing:1px;margin-bottom:8px;}
+.panel-title span{color:var(--orange);}
+
+/* gauge */
+#gauge-wrap{display:flex;align-items:center;gap:12px;}
+#gauge-status-val{font-size:13px;font-weight:700;letter-spacing:1px;}
+#gauge-status-sub{font-size:8px;color:var(--dimmer);margin-top:2px;}
+
+/* proto grid */
+#proto-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;}
+.proto-card{background:var(--bg0);border:1px solid var(--border);border-radius:3px;padding:8px 10px;}
+.proto-name{font-size:10px;color:#8899cc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;}
+.proto-risk-val{font-size:10px;font-weight:700;}
+.proto-bar-bg{background:var(--bg2);border-radius:2px;height:3px;margin:4px 0;}
+.proto-bar{height:3px;border-radius:2px;transition:width .5s ease;}
+.proto-count{font-size:9px;color:var(--dimmer);}
+
+/* alerts */
+#alerts-header{padding:10px 14px 6px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+#clear-btn{background:none;border:1px solid var(--border);color:var(--dimmer);
+  border-radius:2px;padding:2px 6px;cursor:pointer;font-family:inherit;font-size:8px;letter-spacing:1px;}
+#alerts-list{flex:1;overflow-y:auto;padding:8px 14px;}
+.alert-card{border-radius:4px;padding:10px 12px;margin-bottom:8px;animation:alert-in .3s ease;}
+.alert-level{font-size:11px;font-weight:700;letter-spacing:1px;}
+.alert-proto{font-size:11px;color:#ccd6f0;margin:3px 0;}
+.alert-flags{display:flex;flex-wrap:wrap;gap:4px;margin:3px 0;}
+.flag-chip{padding:1px 5px;border-radius:2px;font-size:9px;letter-spacing:.5px;}
+.alert-sig{font-size:9px;color:var(--dimmer);margin-top:4px;}
+.alert-score-num{font-size:18px;font-weight:900;}
+.alert-score-lbl{font-size:9px;color:var(--dimmer);}
+.ack-btn{background:none;border:1px solid var(--border);color:var(--dim);
+  border-radius:2px;padding:2px 6px;cursor:pointer;font-family:inherit;font-size:9px;letter-spacing:1px;margin-top:4px;}
+.empty-msg{text-align:center;color:var(--border);padding:20px 0;font-size:10px;line-height:1.8;}
+.empty-msg span{color:var(--green);}
+#no-alerts-msg{display:block;}
+
+/* network canvas */
+#net-canvas{border-radius:4px;display:block;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="header">
+    <div style="display:flex;align-items:center;gap:0">
+      <div class="hd-logo">
+        <div class="hd-icon">S</div>
+        <div>
+          <div class="hd-title">SENTINELBTC</div>
+          <div class="hd-sub">POST-QUANTUM DEFI SECURITY · v2.1.0</div>
+        </div>
+      </div>
+      <div class="hd-divider"></div>
+      <div class="hd-nets">
+        <div class="hd-net"><div class="hd-dot"></div>MAINNET</div>
+        <div class="hd-net"><div class="hd-dot"></div>STACKS L2</div>
+        <div class="hd-net"><div class="hd-dot"></div>THRESHOLD</div>
+      </div>
+    </div>
+    <div class="hd-right">
+      <div id="critical-banner">⚠ <span id="critical-count">0</span> CRITICAL</div>
+      <div class="pq-badge">PQ: CRYSTALS-KYBER · DILITHIUM · SPHINCS+</div>
+      <button id="live-btn" class="live" onclick="toggleLive()">● LIVE</button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div id="body">
+
+    <!-- LEFT -->
+    <div id="left">
+      <div id="stats-row">
+        <div class="stat-card" style="border-top:2px solid var(--blue)">
+          <div class="stat-label">SCANNED</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end">
+            <div><div class="stat-val" id="stat-scanned" style="color:var(--blue)">0</div><div class="stat-sub">transactions</div></div>
+            <canvas id="spark-tx" width="100" height="32" class="stat-spark"></canvas>
+          </div>
+        </div>
+        <div class="stat-card" style="border-top:2px solid var(--yellow)">
+          <div class="stat-label">AVG RISK</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-end">
+            <div><div class="stat-val" id="stat-risk" style="color:var(--yellow)">0</div><div class="stat-sub">live index</div></div>
+            <canvas id="spark-risk" width="100" height="32" class="stat-spark"></canvas>
+          </div>
+        </div>
+        <div class="stat-card" style="border-top:2px solid var(--red)">
+          <div class="stat-label">CRITICAL</div>
+          <div class="stat-val" id="stat-critical" style="color:var(--red)">0</div>
+          <div class="stat-sub">active threats</div>
+        </div>
+        <div class="stat-card" style="border-top:2px solid var(--orange)">
+          <div class="stat-label">HIGH</div>
+          <div class="stat-val" id="stat-high" style="color:var(--orange)">0</div>
+          <div class="stat-sub">alerts</div>
+        </div>
+        <div class="stat-card" style="border-top:2px solid var(--yellow)">
+          <div class="stat-label">MEDIUM</div>
+          <div class="stat-val" id="stat-medium" style="color:var(--yellow)">0</div>
+          <div class="stat-sub">flagged</div>
+        </div>
+      </div>
+
+      <div id="filter-bar">
+        <span class="filter-label">FILTER:</span>
+        <button class="filter-btn" id="fb-ALL" onclick="setFilter('ALL')" style="border:1px solid var(--blue);background:#0a1220;color:var(--blue);">ALL</button>
+        <button class="filter-btn" id="fb-CRITICAL" onclick="setFilter('CRITICAL')" style="border:1px solid var(--border);background:transparent;color:var(--dim);">CRITICAL</button>
+        <button class="filter-btn" id="fb-HIGH" onclick="setFilter('HIGH')" style="border:1px solid var(--border);background:transparent;color:var(--dim);">HIGH</button>
+        <button class="filter-btn" id="fb-MEDIUM" onclick="setFilter('MEDIUM')" style="border:1px solid var(--border);background:transparent;color:var(--dim);">MEDIUM</button>
+        <button class="filter-btn" id="fb-LOW" onclick="setFilter('LOW')" style="border:1px solid var(--border);background:transparent;color:var(--dim);">LOW</button>
+        <div id="tx-count">0 tx displayed <span id="blink-cursor">▮</span></div>
+      </div>
+
+      <div id="tx-header">
+        <span></span><span>TIME</span><span>PROTOCOL › TYPE</span>
+        <span style="text-align:right">AMOUNT</span>
+        <span style="text-align:center">RISK SCORE</span>
+        <span style="text-align:center">LEVEL</span>
+        <span>BLOCK</span>
+      </div>
+      <div id="tx-stream"></div>
+    </div>
+
+    <!-- RIGHT -->
+    <div id="right">
+      <div id="gauge-panel">
+        <div class="panel-title">SYSTEM THREAT INDEX</div>
+        <div id="gauge-wrap">
+          <svg id="gauge-svg" width="120" height="70" viewBox="0 0 120 70">
+            <defs>
+              <linearGradient id="gg" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#00ff88"/>
+                <stop offset="33%" stop-color="#ffcc00"/>
+                <stop offset="66%" stop-color="#ff8800"/>
+                <stop offset="100%" stop-color="#ff2244"/>
+              </linearGradient>
+            </defs>
+            <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="#1a2433" stroke-width="8" stroke-linecap="round"/>
+            <path d="M 10 65 A 50 50 0 0 1 110 65" fill="none" stroke="url(#gg)" stroke-width="8" stroke-linecap="round" opacity=".6"/>
+            <line id="gauge-needle" x1="60" y1="65" x2="60" y2="25" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round"/>
+            <circle id="gauge-dot" cx="60" cy="65" r="4" fill="#00ff88"/>
+            <text id="gauge-text" x="60" y="52" text-anchor="middle" fill="#00ff88" font-size="14" font-weight="900" font-family="JetBrains Mono,monospace">0</text>
+          </svg>
+          <div>
+            <div style="font-size:9px;color:var(--dim)">STATUS</div>
+            <div id="gauge-status-val" style="color:var(--green)">NOMINAL</div>
+            <div class="gauge-status-sub">PQ-PROTECTED</div>
+            <div style="font-size:8px;color:var(--dimmer)">KYBER-1024 · DIL3</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="net-panel">
+        <div class="panel-title">PROTOCOL NETWORK MAP</div>
+        <canvas id="net-canvas" width="292" height="190"></canvas>
+      </div>
+
+      <div id="proto-panel">
+        <div class="panel-title">PROTOCOL RISK INDEX</div>
+        <div id="proto-grid"></div>
+      </div>
+
+      <div id="alerts-panel">
+        <div id="alerts-header">
+          <div style="font-size:9px;color:var(--dimmer);letter-spacing:1px">ACTIVE ALERTS <span id="alert-count-badge">(0)</span></div>
+          <button id="clear-btn" onclick="clearAlerts()">CLEAR ALL</button>
+        </div>
+        <div id="alerts-list">
+          <div id="no-alerts-msg" class="empty-msg">NO ACTIVE ALERTS<br><span>SYSTEM NOMINAL</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── DATA & STATE ──────────────────────────────────────────────────────────
+const PROTOCOLS = ["StacksSwap","ALEX DeFi","Sovryn","BadgerDAO","Threshold","tBTC Bridge","Lightning DEX","Wrapped BTC"];
+const TX_TYPES  = ["SWAP","LIQUIDITY_ADD","LIQUIDITY_REMOVE","FLASH_LOAN","BRIDGE","STAKE","BORROW","LIQUIDATE"];
+const ADDRESSES = Array.from({length:20},(_,i)=>`bc1q${Math.random().toString(36).slice(2,12)}...${i.toString(16).padStart(4,'0')}`);
+const LEVEL_CFG = {
+  CRITICAL:{color:"#ff2244",bg:"#2a0008",glow:"0 0 20px #ff224466"},
+  HIGH:    {color:"#ff8800",bg:"#1a0f00",glow:"0 0 15px #ff880044"},
+  MEDIUM:  {color:"#ffcc00",bg:"#1a1400",glow:"0 0 10px #ffcc0033"},
+  LOW:     {color:"#00ff88",bg:"#001a0d",glow:"0 0 8px #00ff8822"},
+};
+
+let state = {
+  transactions:[],
+  alerts:[],
+  isLive:true,
+  filter:"ALL",
+  totalScanned:0,
+  threatCount:{CRITICAL:0,HIGH:0,MEDIUM:0,LOW:0},
+  riskHistory:[],
+  txHistory:[],
+  protocolStats:{},
+  avgRisk:0,
+  txCounter:1000,
+  interval:null,
+};
+
+// ── PQ Crypto ─────────────────────────────────────────────────────────────
+function kyberHash(data){
+  let h=0x6b796265n;
+  const s=JSON.stringify(data);
+  for(let i=0;i<s.length;i++) h=(h*31n+BigInt(s.charCodeAt(i)))&0xFFFFFFFFFFFFFFFFn;
+  return h.toString(16).padStart(16,"0");
+}
+function dilithiumSign(txId){
+  const seed=txId.split("").reduce((a,c)=>a^c.charCodeAt(0),0);
+  return `DIL2_${seed.toString(16).padStart(4,"0")}_${Date.now().toString(36).toUpperCase()}`;
+}
+
+// ── Risk Engine ───────────────────────────────────────────────────────────
+function analyzeRisk(tx){
+  let score=0; const flags=[];
+  if(tx.amount>500){score+=35;flags.push("LARGE_TRANSFER");}
+  if(tx.amount>1000){score+=25;flags.push("WHALE_MOVEMENT");}
+  if(tx.velocity>8){score+=30;flags.push("HIGH_VELOCITY");}
+  if(tx.type==="FLASH_LOAN"){score+=40;flags.push("FLASH_LOAN_PATTERN");}
+  if(tx.liquidityDelta<-0.3){score+=30;flags.push("LIQUIDITY_DRAIN");}
+  if(tx.isNewAddress&&tx.amount>100){score+=20;flags.push("UNKNOWN_ACTOR");}
+  if(tx.contractInteractions>5){score+=25;flags.push("CONTRACT_CHAIN");}
+  if(tx.gasSpike>3){score+=15;flags.push("GAS_ANOMALY");}
+  score=Math.min(score,100);
+  const level=score>=75?"CRITICAL":score>=50?"HIGH":score>=25?"MEDIUM":"LOW";
+  return{score,flags,level};
+}
+
+// ── Generate TX ───────────────────────────────────────────────────────────
+function generateTx(){
+  const isAnomaly=Math.random()<0.22;
+  const type=isAnomaly&&Math.random()>.5?"FLASH_LOAN":TX_TYPES[Math.floor(Math.random()*TX_TYPES.length)];
+  const amount=isAnomaly?Math.random()*2000+300:Math.random()*150+0.1;
+  const id=`0x${(state.txCounter++).toString(16).padStart(8,"0")}${Math.random().toString(16).slice(2,8)}`;
+  const tx={
+    id,timestamp:Date.now(),
+    protocol:PROTOCOLS[Math.floor(Math.random()*PROTOCOLS.length)],
+    type,amount:parseFloat(amount.toFixed(4)),
+    from:ADDRESSES[Math.floor(Math.random()*ADDRESSES.length)],
+    to:ADDRESSES[Math.floor(Math.random()*ADDRESSES.length)],
+    velocity:isAnomaly?Math.floor(Math.random()*12+5):Math.floor(Math.random()*5),
+    liquidityDelta:isAnomaly?-(Math.random()*.6):Math.random()*.4-.2,
+    isNewAddress:Math.random()<(isAnomaly?.6:.1),
+    contractInteractions:isAnomaly?Math.floor(Math.random()*8+3):Math.floor(Math.random()*3),
+    gasSpike:isAnomaly?Math.random()*4+1:Math.random()*1.5,
+    blockHeight:840000+Math.floor(Math.random()*5000),
+  };
+  const risk=analyzeRisk(tx);
+  tx.score=risk.score; tx.flags=risk.flags; tx.level=risk.level;
+  tx.pqSignature=dilithiumSign(id);
+  tx.kyberHash=kyberHash(tx);
+  return tx;
+}
+
+// ── Process TX ────────────────────────────────────────────────────────────
+function processTx(tx){
+  state.transactions.unshift(tx);
+  if(state.transactions.length>200) state.transactions.length=200;
+  state.totalScanned++;
+  state.riskHistory.push(tx.score);
+  if(state.riskHistory.length>50) state.riskHistory.shift();
+  state.txHistory.push(1);
+  if(state.txHistory.length>50) state.txHistory.shift();
+  if(tx.level!=="LOW") state.threatCount[tx.level]=(state.threatCount[tx.level]||0)+1;
+  if(tx.level==="CRITICAL"||tx.level==="HIGH"){
+    state.alerts.unshift({...tx,alertId:`alert_${Date.now()}_${Math.random()}`});
+    if(state.alerts.length>50) state.alerts.length=50;
+  }
+  const p=state.protocolStats[tx.protocol]||{count:0,totalRisk:0,alerts:0};
+  p.count++;p.totalRisk+=tx.score;p.alerts+=(tx.level!=="LOW"?1:0);p.avgRisk=p.totalRisk/p.count;
+  state.protocolStats[tx.protocol]=p;
+  state.avgRisk=Math.round(state.avgRisk*.95+tx.score*.05);
+  render(tx);
+}
+
+// ── Sparkline ─────────────────────────────────────────────────────────────
+function drawSparkline(canvasId,data,color){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas||!data.length) return;
+  const ctx=canvas.getContext("2d"),W=canvas.width,H=canvas.height;
+  const max=Math.max(...data,1),min=Math.min(...data,0),range=max-min||1;
+  ctx.clearRect(0,0,W,H);
+  const pts=data.map((v,i)=>({x:(i/(data.length-1))*W,y:H-((v-min)/range)*H}));
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,H);pts.forEach(p=>ctx.lineTo(p.x,p.y));ctx.lineTo(W,H);
+  ctx.fillStyle=color+"14";ctx.fill();
+}
+
+// ── Gauge ─────────────────────────────────────────────────────────────────
+function updateGauge(score){
+  const color=score>=75?"#ff2244":score>=50?"#ff8800":score>=25?"#ffcc00":"#00ff88";
+  const angle=(score/100)*180-90;
+  const rad=(angle-90)*Math.PI/180;
+  const x2=60+40*Math.cos(rad),y2=65+40*Math.sin(rad);
+  document.getElementById("gauge-needle").setAttribute("x2",x2.toFixed(1));
+  document.getElementById("gauge-needle").setAttribute("y2",y2.toFixed(1));
+  document.getElementById("gauge-needle").setAttribute("stroke",color);
+  document.getElementById("gauge-dot").setAttribute("fill",color);
+  document.getElementById("gauge-text").textContent=score;
+  document.getElementById("gauge-text").setAttribute("fill",color);
+  const statusEl=document.getElementById("gauge-status-val");
+  statusEl.style.color=color;
+  statusEl.textContent=score>=60?"ELEVATED":score>=35?"GUARDED":"NOMINAL";
+}
+
+// ── Network Map ───────────────────────────────────────────────────────────
+const netNodes={};let netFrame=0;
+function drawNetwork(){
+  const canvas=document.getElementById("net-canvas");
+  if(!canvas) return;
+  const ctx=canvas.getContext("2d"),W=canvas.width,H=canvas.height;
+  const cx=W/2,cy=H/2;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#060a0f";ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="#0d1520";ctx.lineWidth=.5;
+  for(let x=0;x<W;x+=20){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  const pulse=.5+.5*Math.sin(netFrame*.05);
+  ctx.beginPath();ctx.arc(cx,cy,12+pulse*3,0,Math.PI*2);
+  ctx.fillStyle="#ff880022";ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,10,0,Math.PI*2);
+  ctx.fillStyle="#ff8800";ctx.fill();
+  ctx.fillStyle="#000";ctx.font="bold 9px JetBrains Mono,monospace";
+  ctx.textAlign="center";ctx.fillText("₿",cx,cy+3);
+  Object.values(netNodes).forEach(node=>{
+    const riskColor=node.risk>=75?"#ff2244":node.risk>=50?"#ff8800":node.risk>=25?"#ffcc00":"#00ff88";
+    const alpha=Math.min(1,(node.activity||1)/5);
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(node.x,node.y);
+    ctx.strokeStyle=riskColor+Math.round(alpha*160).toString(16).padStart(2,"0");
+    ctx.lineWidth=.8;ctx.setLineDash([3,6]);ctx.stroke();ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(node.x,node.y,10+pulse*2,0,Math.PI*2);
+    ctx.fillStyle=riskColor+"11";ctx.fill();
+    ctx.beginPath();ctx.arc(node.x,node.y,6,0,Math.PI*2);
+    ctx.fillStyle=riskColor;ctx.globalAlpha=alpha;ctx.fill();ctx.globalAlpha=1;
+    ctx.fillStyle="#8899aa";ctx.font="8px JetBrains Mono,monospace";
+    ctx.textAlign="center";ctx.fillText(node.label.slice(0,8),node.x,node.y+16);
+    if(node.activity>0) node.activity-=.05;
+  });
+  netFrame++;requestAnimationFrame(drawNetwork);
+}
+
+function updateNetNode(tx){
+  const cx=146,cy=95;
+  if(!netNodes[tx.protocol]){
+    const angle=Math.random()*Math.PI*2,r=40+Math.random()*55;
+    netNodes[tx.protocol]={x:cx+r*Math.cos(angle),y:cy+r*Math.sin(angle),label:tx.protocol,activity:0,risk:tx.score};
+  }
+  netNodes[tx.protocol].activity=Math.min(10,(netNodes[tx.protocol].activity||0)+1);
+  netNodes[tx.protocol].risk=tx.score;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+function render(newTx){
+  // Stats
+  document.getElementById("stat-scanned").textContent=state.totalScanned.toLocaleString();
+  document.getElementById("stat-risk").textContent=state.avgRisk;
+  document.getElementById("stat-critical").textContent=state.threatCount.CRITICAL||0;
+  document.getElementById("stat-high").textContent=state.threatCount.HIGH||0;
+  document.getElementById("stat-medium").textContent=state.threatCount.MEDIUM||0;
+  drawSparkline("spark-tx",state.txHistory,"#4a9eff");
+  drawSparkline("spark-risk",state.riskHistory,"#ffcc00");
+  updateGauge(state.avgRisk);
+
+  // Critical banner
+  const critCount=state.alerts.filter(a=>a.level==="CRITICAL").length;
+  const banner=document.getElementById("critical-banner");
+  if(critCount>0){banner.style.display="block";document.getElementById("critical-count").textContent=critCount;}
+  else{banner.style.display="none";}
+
+  // TX Stream
+  renderTxStream(newTx);
+
+  // Protocol grid
+  renderProtoGrid();
+
+  // Alerts
+  renderAlerts();
+
+  // Network node
+  if(newTx) updateNetNode(newTx);
+}
+
+function fmtTime(ts){return new Date(ts).toTimeString().slice(0,8);}
+function fmtBtc(n){return `₿${n.toFixed(4)}`;}
+
+function renderTxStream(newTx){
+  const stream=document.getElementById("tx-stream");
+  const filtered=state.filter==="ALL"?state.transactions:state.transactions.filter(t=>t.level===state.filter);
+  document.getElementById("tx-count").innerHTML=`${filtered.length} tx displayed <span id="blink-cursor" style="${state.isLive?'animation:blink 1s infinite':''}; color:var(--green)">▮</span>`;
+
+  if(newTx&&(state.filter==="ALL"||newTx.level===state.filter)){
+    const cfg=LEVEL_CFG[newTx.level];
+    const row=document.createElement("div");
+    row.className="tx-row";
+    row.style.borderLeft=`2px solid ${cfg.color}`;
+    row.style.background=cfg.bg;
+    row.innerHTML=`
+      <span class="tx-pulse" style="background:${cfg.color};box-shadow:0 0 0 0 ${cfg.color};animation:${newTx.level!=="LOW"?"pulse-ring 1.4s ease-out infinite":"none"}"></span>
+      <span class="tx-time">${fmtTime(newTx.timestamp)}</span>
+      <span class="tx-proto">${newTx.protocol} <span class="tx-sep">›</span> <span class="tx-type">${newTx.type}</span></span>
+      <span class="tx-amt">${fmtBtc(newTx.amount)}</span>
+      <span class="tx-score" style="color:${cfg.color}">[${String(newTx.score).padStart(3," ")}]</span>
+      <span class="tx-level" style="color:${cfg.color};border:1px solid ${cfg.color}44;background:${cfg.bg}">${newTx.level}</span>
+      <span class="tx-block">#${newTx.blockHeight}</span>`;
+    stream.insertBefore(row,stream.firstChild);
+    setTimeout(()=>{row.style.background="transparent";},2000);
+    // prune DOM
+    while(stream.children.length>80) stream.removeChild(stream.lastChild);
+  } else if(!newTx){
+    // full re-render (filter changed)
+    stream.innerHTML="";
+    filtered.slice(0,80).forEach(tx=>{
+      const cfg=LEVEL_CFG[tx.level];
+      const row=document.createElement("div");
+      row.className="tx-row";
+      row.style.borderLeft=`2px solid ${cfg.color}`;
+      row.innerHTML=`
+        <span class="tx-pulse" style="background:${cfg.color}"></span>
+        <span class="tx-time">${fmtTime(tx.timestamp)}</span>
+        <span class="tx-proto">${tx.protocol} <span class="tx-sep">›</span> <span class="tx-type">${tx.type}</span></span>
+        <span class="tx-amt">${fmtBtc(tx.amount)}</span>
+        <span class="tx-score" style="color:${cfg.color}">[${String(tx.score).padStart(3," ")}]</span>
+        <span class="tx-level" style="color:${cfg.color};border:1px solid ${cfg.color}44;background:${cfg.bg}">${tx.level}</span>
+        <span class="tx-block">#${tx.blockHeight}</span>`;
+      stream.appendChild(row);
+    });
+  }
+}
+
+function renderProtoGrid(){
+  const grid=document.getElementById("proto-grid");
+  const entries=Object.entries(state.protocolStats).slice(0,8);
+  grid.innerHTML="";
+  entries.forEach(([name,data])=>{
+    const c=data.avgRisk>=60?"#ff2244":data.avgRisk>=35?"#ff8800":"#00ff88";
+    const card=document.createElement("div");
+    card.className="proto-card";
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span class="proto-name">${name}</span>
+        <span class="proto-risk-val" style="color:${c}">${Math.round(data.avgRisk)}</span>
+      </div>
+      <div class="proto-bar-bg"><div class="proto-bar" style="width:${Math.min(data.avgRisk,100)}%;background:${c};box-shadow:0 0 6px ${c}88"></div></div>
+      <div class="proto-count">${data.count} txs · ${data.alerts} alerts</div>`;
+    grid.appendChild(card);
+  });
+}
+
+function renderAlerts(){
+  const list=document.getElementById("alerts-list");
+  const badge=document.getElementById("alert-count-badge");
+  badge.textContent=`(${state.alerts.length})`;
+  const noMsg=document.getElementById("no-alerts-msg");
+  if(state.alerts.length===0){
+    if(!noMsg){
+      list.innerHTML=`<div id="no-alerts-msg" class="empty-msg">NO ACTIVE ALERTS<br><span>SYSTEM NOMINAL</span></div>`;
+    }
+    return;
+  }
+  // Only re-render first alert (new one was prepended)
+  if(noMsg) noMsg.remove();
+  // Remove excess
+  while(list.children.length>=state.alerts.length&&list.children.length>0) list.removeChild(list.lastChild);
+  // Prepend new alert card
+  const a=state.alerts[0];
+  const existing=list.querySelector(`[data-id="${a.alertId}"]`);
+  if(!existing){
+    const cfg=LEVEL_CFG[a.level];
+    const card=document.createElement("div");
+    card.className="alert-card";
+    card.dataset.id=a.alertId;
+    card.style.border=`1px solid ${cfg.color}55`;
+    card.style.borderLeft=`3px solid ${cfg.color}`;
+    card.style.background=cfg.bg;
+    card.style.boxShadow=cfg.glow;
+    card.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="tx-pulse" style="width:10px;height:10px;border-radius:50%;background:${cfg.color};animation:pulse-ring 1.4s ease-out infinite"></span>
+            <span class="alert-level" style="color:${cfg.color}">${a.level} THREAT</span>
+            <span style="color:var(--dimmer);font-size:10px">· ${fmtTime(a.timestamp)}</span>
+          </div>
+          <div class="alert-proto">${a.protocol}</div>
+          <div class="alert-flags">${a.flags.map(f=>`<span class="flag-chip" style="background:#0d1117;color:${cfg.color};border:1px solid ${cfg.color}33">${f}</span>`).join("")}</div>
+          <div class="alert-sig">SIG: ${a.pqSignature} · KYBER: ${a.kyberHash.slice(0,12)}…</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:12px">
+          <span class="alert-score-num" style="color:${cfg.color}">${a.score}</span>
+          <span class="alert-score-lbl">RISK</span>
+          <button class="ack-btn" onclick="dismissAlert('${a.alertId}')">ACK</button>
+        </div>
+      </div>`;
+    list.insertBefore(card,list.firstChild);
+  }
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────
+function toggleLive(){
+  state.isLive=!state.isLive;
+  const btn=document.getElementById("live-btn");
+  if(state.isLive){
+    btn.textContent="● LIVE";btn.className="live";
+    startInterval();
+  } else {
+    btn.textContent="○ PAUSED";btn.className="paused";
+    clearInterval(state.interval);
+  }
+}
+
+function setFilter(f){
+  state.filter=f;
+  ["ALL","CRITICAL","HIGH","MEDIUM","LOW"].forEach(k=>{
+    const btn=document.getElementById(`fb-${k}`);
+    const cfg=LEVEL_CFG[k]||{};
+    if(k===f){
+      btn.style.border=`1px solid ${cfg.color||"#4a9eff"}`;
+      btn.style.background=cfg.bg||"#0a1220";
+      btn.style.color=cfg.color||"#4a9eff";
+    } else {
+      btn.style.border="1px solid var(--border)";
+      btn.style.background="transparent";
+      btn.style.color="var(--dim)";
+    }
+  });
+  renderTxStream(null);
+}
+
+function dismissAlert(id){
+  state.alerts=state.alerts.filter(a=>a.alertId!==id);
+  const card=document.querySelector(`[data-id="${id}"]`);
+  if(card) card.remove();
+  document.getElementById("alert-count-badge").textContent=`(${state.alerts.length})`;
+  if(state.alerts.length===0){
+    document.getElementById("alerts-list").innerHTML=`<div id="no-alerts-msg" class="empty-msg">NO ACTIVE ALERTS<br><span>SYSTEM NOMINAL</span></div>`;
+  }
+}
+
+function clearAlerts(){
+  state.alerts=[];
+  document.getElementById("alerts-list").innerHTML=`<div id="no-alerts-msg" class="empty-msg">NO ACTIVE ALERTS<br><span>SYSTEM NOMINAL</span></div>`;
+  document.getElementById("alert-count-badge").textContent="(0)";
+  document.getElementById("critical-banner").style.display="none";
+}
+
+function startInterval(){
+  state.interval=setInterval(()=>{
+    const count=Math.random()>.7?2:1;
+    for(let i=0;i<count;i++) processTx(generateTx());
+  },800+Math.random()*400);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+drawNetwork();
+// Seed
+for(let i=0;i<30;i++) setTimeout(()=>processTx(generateTx()),i*30);
+// Live stream
+setTimeout(startInterval, 950);
+</script>
+</body>
+</html>
